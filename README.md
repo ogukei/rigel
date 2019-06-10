@@ -15,7 +15,7 @@ to properly make build done.
 - Linux (recommended: Ubuntu 18.04 LTS)
 - Vulkan Driver Support
 - Libraries:
-    - Boost 1.7.1 or above (just headers needed)
+    - Boost 1.70.0 or above (just headers needed)
     - OpenGL Mathematics libglm-dev 0.9 or above
     - Vulkan SDK, libvulkan-dev 1.0 or above
 
