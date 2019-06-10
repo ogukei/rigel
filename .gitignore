@@ -1,0 +1,11 @@
+
+*.swp
+.vscode/
+
+/main
+
+*.o
+*.a
+*.tmp
+
+*.ppm
