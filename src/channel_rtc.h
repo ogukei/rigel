@@ -47,7 +47,7 @@ class RTCPeerChannel : public PeerChannelInterface,
   // DataChannelObserver
   void OnStateChange() override {}
   //  A data buffer was successfully received.
-  void OnMessage(const webrtc::DataBuffer& buffer) override {}
+  void OnMessage(const webrtc::DataBuffer& buffer) override;
 
   // PeerConnectionObserver
   // Triggered when the SignalingState changed.

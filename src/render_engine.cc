@@ -13,12 +13,16 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #include <vulkan/vulkan.h>
 
 #include "render_engine.h"
 #include "render_helper.inc"
 #include "logging.inc"
+
+#define TINYOBJLOADER_IMPLEMENTATION
+#include "third_party/tiny_obj_loader.h"
 
 #define VK_CHECK_RESULT(f) (f)
 
@@ -55,6 +59,8 @@ class GraphicsRendererImpl {
   VkFramebuffer framebuffer;
   FrameBufferAttachment colorAttachment, depthAttachment;
   VkRenderPass renderPass;
+
+  uint32_t draw_index_count_;
 
   uint32_t GetMemoryTypeIndex(uint32_t typeBits,
       VkMemoryPropertyFlags properties) {
@@ -195,12 +201,51 @@ class GraphicsRendererImpl {
       float color[3];
     };
     {
-      std::vector<Vertex> vertices = {
-        { {  1.0f,  1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
-        { { -1.0f,  1.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
-        { {  0.0f, -1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } }
-      };
-      std::vector<uint32_t> indices = { 0, 1, 2 };
+      std::vector<Vertex> vertices;
+      std::vector<uint32_t> indices;
+      {
+        std::string inputfile = "res/cube.obj";
+
+        tinyobj::attrib_t attrib;
+        std::vector<tinyobj::shape_t> shapes;
+        std::vector<tinyobj::material_t> materials;
+
+        std::string warn;
+        std::string err;
+
+        bool ret = tinyobj::LoadObj(&attrib, &shapes,
+            &materials, &warn, &err, inputfile.c_str());
+        if (!ret) {
+          RGL_WARN("count not load " + inputfile);
+          exit(1);
+        }
+        for (int i = 0; i < attrib.vertices.size(); i += 3) {
+          const auto &x = attrib.vertices[i + 0];
+          const auto &y = attrib.vertices[i + 1];
+          const auto &z = attrib.vertices[i + 2];
+          Vertex vtx = {
+            { x, z, y },
+            {
+              (glm::cos(i * 0.324f) + 1.0f) * 0.5f,
+              (glm::cos(i * 0.513f) + 1.0f) * 0.5f,
+              (glm::cos(i + 0.762f) + 1.0f) * 0.5f
+            }
+          };
+          vertices.push_back(vtx);
+        }
+        for (size_t s = 0; s < shapes.size(); s++) {
+          size_t index_offset = 0;
+          for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {
+            int fv = shapes[s].mesh.num_face_vertices[f];
+            for (size_t v = 0; v < fv; v++) {
+              tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
+              indices.push_back(idx.vertex_index);
+            }
+            index_offset += fv;
+          }
+        }
+      }
+      draw_index_count_ = indices.size();
 
       const VkDeviceSize vertexBufferSize = vertices.size() * sizeof(Vertex);
       const VkDeviceSize indexBufferSize = indices.size() * sizeof(uint32_t);
@@ -490,7 +535,7 @@ class GraphicsRendererImpl {
       VkPipelineRasterizationStateCreateInfo rasterizationState =
           CreatePipelineRasterizationStateCreateInfo(
               VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT,
-              VK_FRONT_FACE_CLOCKWISE);
+              VK_FRONT_FACE_COUNTER_CLOCKWISE);
 
       VkPipelineColorBlendAttachmentState blendAttachmentState =
           CreatePipelineColorBlendAttachmentState(0xf, VK_FALSE);
@@ -689,7 +734,7 @@ class GraphicsRendererImpl {
     imagedata += subResourceLayout.offset;
   }
 
-  void Render(float x, float y, float z) {
+  void Render(float phi, float theta, float gamma) {
     VkCommandBuffer commandBuffer;
     VkCommandBufferAllocateInfo cmdBufAllocateInfo =
         CreateCommandBufferAllocateInfo(commandPool,
@@ -738,14 +783,27 @@ class GraphicsRendererImpl {
     vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
     std::vector<glm::vec3> pos = {
-      glm::vec3(0, 0, -2.0)
+      glm::vec3(0, 0, 0)
     };
 
-    for (auto v : pos) {
-      glm::mat4 mvpMatrix = glm::perspective(glm::radians(60.0f), (float)width / (float)height, 0.1f, 256.0f) 
-        * glm::translate(glm::mat4(1.0f), v) * glm::rotate(glm::mat4(1.0f), glm::cos(x) * 3.1415f, glm::vec3(0.0f, 0.0f, 1.0f));
-      vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &mvpMatrix);
-      vkCmdDrawIndexed(commandBuffer, 3, 1, 0, 0, 0);
+    for (const auto &v : pos) {
+      glm::mat4 proj(glm::perspective(
+          glm::radians(60.0f),
+          static_cast<float>(width) / static_cast<float>(height),
+          0.1f, 256.0f));
+      theta -= 1.72f;
+      float dist = 15.0f;
+      dist += gamma;
+      float x = dist * glm::sin(theta) * glm::cos(phi + 1.0);
+      float y = dist * glm::cos(theta);
+      float z = dist * glm::sin(theta) * glm::sin(phi + 1.0);
+      glm::vec3 eye(x, y, z);
+      auto view = glm::lookAt(eye, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+      auto model = glm::translate(glm::mat4(), v);
+      glm::mat4 mvp = proj * view;
+      vkCmdPushConstants(commandBuffer, pipelineLayout,
+        VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &mvp);
+      vkCmdDrawIndexed(commandBuffer, draw_index_count_, 1, 0, 0, 0);
     }
 
     vkCmdEndRenderPass(commandBuffer);

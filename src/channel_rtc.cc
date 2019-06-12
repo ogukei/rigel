@@ -3,6 +3,8 @@
 #include "logging.inc"
 #include "capture_track_source.h"
 #include "render.h"
+#include <boost/tokenizer.hpp>
+#include <boost/lexical_cast.hpp>
 
 namespace rigel {
 
@@ -31,18 +33,16 @@ void RTCPeerChannel::Initialize(
     RenderInstanceFactoryInterface *render_instance_factory) {
   // data channel
   webrtc::DataChannelInit init;
-  data_channel_ = std::move(
-      connection->CreateDataChannel("data_channel", &init));
+  data_channel_ = connection->CreateDataChannel("data_channel", &init);
   data_channel_->RegisterObserver(this);
   // video capturer
   video_capturer_ = new VideoCapturer();
   // renderer
-  render_instance_ = std::move(
-      render_instance_factory->CreateInstance(video_capturer_));
+  render_instance_ = render_instance_factory->CreateInstance(video_capturer_);
   // capture source
   std::unique_ptr<
       rtc::VideoSourceInterface<webrtc::VideoFrame>> source(video_capturer_);
-  track_source_ = std::move(CapturerTrackSource::Create(std::move(source)));
+  track_source_ = CapturerTrackSource::Create(std::move(source));
   // create track
   rtc::scoped_refptr<webrtc::VideoTrackInterface> video_track(
       factory->CreateVideoTrack("track0", track_source_));
@@ -130,5 +130,38 @@ void RTCPeerChannel::OnIceCandidate(
 
 void RTCPeerChannel::OnIceGatheringChange(
     webrtc::PeerConnectionInterface::IceGatheringState new_state) {}
+
+void RTCPeerChannel::OnMessage(const webrtc::DataBuffer& buffer) {
+  std::string message(buffer.data.data<char>(), buffer.data.size());
+  boost::char_separator<char> sep(",");
+  boost::tokenizer<boost::char_separator<char> > tokens(message, sep);
+  std::vector<std::string> v;
+  std::copy(tokens.begin(), tokens.end(), std::back_inserter(v));
+  if (v.size() == 0) return;
+  const auto &command = v[0];
+  // Move XY
+  if (command == "m") {
+    if (v.size() < 3) return;
+    int x, y;
+    try {
+      x = boost::lexical_cast<int>(v[1]);
+      y = boost::lexical_cast<int>(v[2]);
+    } catch (boost::bad_lexical_cast const &e) {
+        return;
+    }
+    render_instance_->InputXYAxis(x, y);
+  }
+  // Wheel
+  if (command == "w") {
+    if (v.size() < 2) return;
+    int z;
+    try {
+      z = boost::lexical_cast<int>(v[1]);
+    } catch (boost::bad_lexical_cast const &e) {
+        return;
+    }
+    render_instance_->InputZAxis(z);
+  }
+}
 
 }  // namespace rigel

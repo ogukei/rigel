@@ -51,21 +51,6 @@ static void YUVRect(webrtc::I420Buffer *buffer,
       buffer->width(), buffer->height(), value_y, value_u, value_v);
 }
 
-static std::tuple<int, int, int> RandomYUV() {
-  std::vector<std::tuple<int, int, int>> colors = {
-    {149, 43, 21},    // green
-    {76, 84, 255},    // red
-    {29, 255, 107},   // blue
-    {105, 212, 234},  // purple
-    {225, 0, 148},    // yellow
-    {178, 171, 0}     // cyan
-  };
-  std::random_device random_device;
-  std::mt19937 engine{random_device()};
-  std::uniform_int_distribution<int> dist(0, colors.size() - 1);
-  return colors[dist(engine)];
-}
-
 void VideoCapturer::Initialize() {
   constexpr int width = 960;
   constexpr int height = 544;
@@ -75,10 +60,6 @@ void VideoCapturer::Initialize() {
           cricket::VideoFormat::FpsToInterval(60), cricket::FOURCC_I420)));
   // frame buffer
   buffer_ = webrtc::I420Buffer::Create(width, height);
-  // fill random color
-  // int y, u, v;
-  // std::tie(y, u, v) = RandomYUV();
-  // YUVRect(buffer.get(), y, u, v);
   webrtc::I420Buffer::SetBlack(buffer_.get());
   // generate frame
   int64_t timems = rtc::TimeMillis();
