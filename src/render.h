@@ -14,6 +14,8 @@ struct RenderInstanceInterface {
   virtual ~RenderInstanceInterface() = default;
   virtual void StartRendering() = 0;
   virtual void StopRendering() = 0;
+  virtual void InputXYAxis(int x, int y) = 0;
+  virtual void InputZAxis(int z) = 0;
 };
 
 struct RenderInstanceFactoryInterface {

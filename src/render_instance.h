@@ -10,17 +10,22 @@
 
 namespace rigel {
 
+class RenderInstancePrivate;
+
 class RenderInstance : public RenderInstanceInterface {
  public:
-  explicit RenderInstance(RenderInstanceSink *sink) : sink_(sink) {}
+  explicit RenderInstance(RenderInstanceSink *sink);
+  ~RenderInstance();
 
   void StartRendering() override;
   void StopRendering() override;
+  void InputXYAxis(int x, int y) override;
+  void InputZAxis(int z) override;
  private:
   RenderInstanceSink *sink_;
   std::unique_ptr<IntervalTimer> timer_;
   std::unique_ptr<GraphicsRenderer> renderer_;
-
+  RenderInstancePrivate *private_;
   void OnTick(double time_sec);
 };
 
