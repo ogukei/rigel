@@ -12,14 +12,14 @@
 #   1. In advance, requires libwebrtc compiled using Chromium build toolchain.
 #      Use the following git commit hash when you checkout branch in order to
 #      ensure that we use the same version of libwebrtc.
-#        2a1d802a35ad3d7c2a8371ce0d4263ee2476e81e
+#        cc1b32545db7823b85f5a83a92ed5f85970492c9
 #      For more information of WebRTC build instructions,
 #      see https://webrtc.org/native-code/development/
 #   2. Specify the WebRTC /src directory path to `WEBRTC_ROOT`
 #   3. Make sure that `WEBRTC_LIB_ROOT` matches the toolchain generated directory
 #   4. make -j
 
-WEBRTC_ROOT=/home/user/dev/rtc/src
+WEBRTC_ROOT=/home/user/dev/git/webrtc/src
 WEBRTC_LIB_ROOT=$(WEBRTC_ROOT)/out/Default
 
 TARGET=main

@@ -23,7 +23,7 @@ to properly make build done.
   Use the following git commit hash when you checkout branch in order to
   ensure that we use the same version of libwebrtc.
 
-    ```2a1d802a35ad3d7c2a8371ce0d4263ee2476e81e```
+    ```cc1b32545db7823b85f5a83a92ed5f85970492c9```
 
     For more information of WebRTC build instructions,
     see https://webrtc.org/native-code/development/
