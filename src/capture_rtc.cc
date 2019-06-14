@@ -7,57 +7,13 @@
 #include "api/video/i420_buffer.h"
 #include "third_party/libyuv/include/libyuv.h"
 #include "common_video/libyuv/include/webrtc_libyuv.h"
+#include "rtc_base/time_utils.h"
 
 namespace rigel {
-
-cricket::CaptureState VideoCapturer::Start(
-    const cricket::VideoFormat& capture_format) {
-  if (capture_state() == cricket::CS_RUNNING) {
-    return capture_state();
-  }
-  SetCaptureFormat(&capture_format);
-  return cricket::CS_RUNNING;
-}
-
-void VideoCapturer::Stop() {
-  if (capture_state() == cricket::CS_STOPPED) {
-    return;
-  }
-  SetCaptureFormat(nullptr);
-  SetCaptureState(cricket::CS_STOPPED);
-}
-
-bool VideoCapturer::GetPreferredFourccs(std::vector<uint32_t>* fourccs) {
-  if (!fourccs) return false;
-  fourccs->push_back(cricket::FOURCC_I420);
-  return true;
-}
-
-bool VideoCapturer::GetBestCaptureFormat(const cricket::VideoFormat& desired,
-    cricket::VideoFormat* best_format) {
-  if (!best_format) return false;
-  best_format->width = desired.width;
-  best_format->height = desired.height;
-  best_format->fourcc = cricket::FOURCC_I420;
-  best_format->interval = desired.interval;
-  return true;
-}
-
-static void YUVRect(webrtc::I420Buffer *buffer,
-    int value_y, int value_u, int value_v) {
-  libyuv::I420Rect(buffer->MutableDataY(), buffer->StrideY(),
-      buffer->MutableDataU(), buffer->StrideU(),
-      buffer->MutableDataV(), buffer->StrideV(), 0, 0,
-      buffer->width(), buffer->height(), value_y, value_u, value_v);
-}
 
 void VideoCapturer::Initialize() {
   constexpr int width = 960;
   constexpr int height = 544;
-  RGL_WARN("VideoCapturer::Initialize()");
-  SetCaptureState(
-      Start(cricket::VideoFormat(width, height,
-          cricket::VideoFormat::FpsToInterval(60), cricket::FOURCC_I420)));
   // frame buffer
   buffer_ = webrtc::I420Buffer::Create(width, height);
   webrtc::I420Buffer::SetBlack(buffer_.get());
@@ -65,7 +21,7 @@ void VideoCapturer::Initialize() {
   int64_t timems = rtc::TimeMillis();
   webrtc::VideoFrame frame(buffer_, 0, timems, webrtc::kVideoRotation_0);
   frame.set_ntp_time_ms(0);
-  OnFrame(frame, width, height);
+  OnFrame(frame);
 }
 
 void VideoCapturer::OnRenderFrame(const char *map, int w, int h, int r) {
@@ -87,7 +43,7 @@ void VideoCapturer::OnRenderFrame(const char *map, int w, int h, int r) {
   int64_t timems = rtc::TimeMillis();
   webrtc::VideoFrame frame(buffer_, 0, timems, webrtc::kVideoRotation_0);
   frame.set_ntp_time_ms(0);
-  OnFrame(frame, width, height);
+  OnFrame(frame);
 }
 
 }  // namespace rigel
