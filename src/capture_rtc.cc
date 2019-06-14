@@ -18,9 +18,9 @@ void VideoCapturer::Initialize() {
   buffer_ = webrtc::I420Buffer::Create(width, height);
   webrtc::I420Buffer::SetBlack(buffer_.get());
   // generate frame
-  int64_t timems = rtc::TimeMillis();
-  webrtc::VideoFrame frame(buffer_, 0, timems, webrtc::kVideoRotation_0);
-  frame.set_ntp_time_ms(0);
+  auto frame = webrtc::VideoFrame::Builder()
+      .set_video_frame_buffer(buffer_)
+      .build();
   OnFrame(frame);
 }
 
@@ -40,9 +40,9 @@ void VideoCapturer::OnRenderFrame(const char *map, int w, int h, int r) {
       libyuv::kRotate0,
       libyuv::FOURCC_ABGR);
   // generate frame
-  int64_t timems = rtc::TimeMillis();
-  webrtc::VideoFrame frame(buffer_, 0, timems, webrtc::kVideoRotation_0);
-  frame.set_ntp_time_ms(0);
+  auto frame = webrtc::VideoFrame::Builder()
+      .set_video_frame_buffer(buffer_)
+      .build();
   OnFrame(frame);
 }
 

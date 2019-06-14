@@ -10,7 +10,8 @@ struct RenderInstanceMessage {
 
 class RenderInstancePrivate {
  public:
-  RenderInstancePrivate() : message_queue_(128), x_(0), y_(0), z_(0) {}
+  RenderInstancePrivate() : message_queue_(128), x_(0), y_(0), z_(0),
+      is_initial_state_(true) {}
 
   void Update() {
     RenderInstanceMessage message;
@@ -18,6 +19,7 @@ class RenderInstancePrivate {
       x_ += message.x;
       y_ += message.y;
       z_ += message.z;
+      is_initial_state_ = false;
     }
   }
 
@@ -28,6 +30,7 @@ class RenderInstancePrivate {
   int GetX() const { return x_; }
   int GetY() const { return y_; }
   int GetZ() const { return z_; }
+  bool IsInitialState() const { return is_initial_state_; }
 
  private:
   boost::lockfree::queue<RenderInstanceMessage> message_queue_;
@@ -35,6 +38,7 @@ class RenderInstancePrivate {
   int x_;
   int y_;
   int z_;
+  bool is_initial_state_;
 };
 
 RenderInstance::RenderInstance(RenderInstanceSink *sink)
@@ -47,7 +51,7 @@ RenderInstance::~RenderInstance() {
 
 void RenderInstance::StartRendering() {
   renderer_ = std::unique_ptr<GraphicsRenderer>(new GraphicsRenderer());
-  auto *timer = new IntervalTimer(1.0 / 60, [=](double time_sec) {
+  auto *timer = new IntervalTimer(1.0 / 30, [=](double time_sec) {
     this->OnTick(time_sec);
   });
   timer_ = std::unique_ptr<IntervalTimer>(timer);
@@ -63,10 +67,14 @@ void RenderInstance::OnTick(double time_sec) {
     this->sink_->OnRenderFrame(v, w, h, r);
   });
   private_->Update();
-  renderer_->Render(
+  if (private_->IsInitialState()) {
+    renderer_->Render(time_sec, time_sec * 0.3, 0);
+  } else {
+    renderer_->Render(
       static_cast<float>(private_->GetX()) * 0.01,
       static_cast<float>(private_->GetY()) * 0.01,
       static_cast<float>(private_->GetZ()) * 0.01);
+  }
 }
 
 void RenderInstance::InputXYAxis(int x, int y) {

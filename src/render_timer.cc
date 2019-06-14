@@ -1,10 +1,10 @@
 
 #include "render_timer.h"
+#include "logging.inc"
 
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/scoped_ptr.hpp>
-#include <chrono>
 #include <iostream>
 
 extern "C" {
@@ -13,21 +13,31 @@ extern "C" {
 void *RGLIntervalTimerThreadEntry(void *state);
 }
 
-static inline void RGLSleep(time_t nsec) {
-    struct timespec delay = { nsec / 1000000000, nsec % 1000000000 };
-    pselect(0, NULL, NULL, NULL, &delay, NULL);
+constexpr uint64_t NSEC_PER_SEC = 1000000000L;
+
+static inline void RGLAbsoluteSleep(uint64_t nsec) {
+  timespec t {
+    static_cast<time_t>(nsec / NSEC_PER_SEC),
+    static_cast<__syscall_slong_t>(nsec % NSEC_PER_SEC)
+  };
+  clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t, NULL);
+}
+
+static inline uint64_t RGLGetTime() {
+  timespec time;
+  clock_gettime(CLOCK_MONOTONIC, &time);
+  uint64_t nsec = (static_cast<uint64_t>(time.tv_sec) * NSEC_PER_SEC) +
+    static_cast<uint64_t>(time.tv_nsec);
+  return nsec;
 }
 
 namespace rigel {
 class IntervalTimerState {
-  pthread_t thread_;
-  // internal state
-  volatile bool running_;
-  std::function<void(double)> handle_;
-  time_t delay_nsec_;
-public:
-  IntervalTimerState(double delay_sec, std::function<void(double)> f) 
-  : handle_(f), delay_nsec_(delay_sec * 1.0e9) {
+ public:
+  IntervalTimerState(double interval_sec,
+      std::function<void(double)> f)
+      : handle_(f), interval_(interval_sec * static_cast<double>(NSEC_PER_SEC)),
+        frame_counter_(0), frame_count_since_(0) {
     // isolate thread
     running_ = true;
     pthread_create(&thread_, nullptr, RGLIntervalTimerThreadEntry, this);
@@ -39,30 +49,37 @@ public:
   }
 
   void Run() {
-    using namespace std::chrono;
-    auto last = high_resolution_clock::now();
-    RGLSleep(delay_nsec_);
-    double last_sec = (double)duration_cast<nanoseconds>(last.time_since_epoch()).count() / 1.0e9;
-    double timer = 0;
+    since_ = RGLGetTime();
+    frame_count_since_ = 0;
     while (running_) {
-        auto now = high_resolution_clock::now();
-        auto time_span = duration_cast<duration<double>>(now - last);
-        double duration_sec = time_span.count();
-        time_t duration = (time_t)(duration_sec * 1.0e9);
-        long delta = (long)delay_nsec_ - (long)duration;
-        last = now;
-        long corrected = delay_nsec_ + delta;
-        if (corrected < 10000) {
-            corrected = 10000;
+      uint64_t global_time = RGLGetTime();
+      uint64_t local_time = global_time - since_;
+      {
+        // counts frames per second
+        if (local_time > (frame_count_since_ + NSEC_PER_SEC)) {
+          RGL_INFO(frame_counter_);
+          frame_counter_ = 1;
+          frame_count_since_ = local_time;
+        } else {
+          frame_counter_ += 1;
         }
-        auto dur = duration_cast<nanoseconds>(now.time_since_epoch()).count();
-        double now_sec = static_cast<double>(dur) / 1.0e9;
-        timer += now_sec - last_sec;
-        handle_(timer);
-        last_sec = now_sec;
-        RGLSleep(corrected);
+        // processing
+        handle_(local_time * 1.0e-9);
+      }
+      RGLAbsoluteSleep(global_time + interval_);
     }
   }
+
+ private:
+  pthread_t thread_;
+  // internal state
+  volatile bool running_;
+  std::function<void(double)> handle_;
+  int64_t interval_;
+  uint64_t since_;
+
+  int64_t frame_counter_;
+  int64_t frame_count_since_;
 };
 
 IntervalTimer::IntervalTimer(double delay_sec, std::function<void(double)> f)
