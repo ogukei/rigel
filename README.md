@@ -28,7 +28,11 @@ to properly make build done.
     For more information of WebRTC build instructions,
     see https://webrtc.org/native-code/development/
 
-2. Specify the WebRTC /src directory path to `WEBRTC_ROOT`
+    Use the following command to generate Ninja build file.
+
+    ```gn gen out/Default --args='target_os="linux" is_debug=false rtc_include_tests=false is_component_build=false use_rtti=true'```
+
+2. Specify the WebRTC /src directory path to `WEBRTC_ROOT` in Makefile
 3. Make sure that `WEBRTC_LIB_ROOT` matches the toolchain generated directory
 4. `make -j`
 
