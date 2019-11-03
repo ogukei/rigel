@@ -5,7 +5,7 @@
 #   - Linux (recommended: Ubuntu 18.04 LTS)
 #   - Vulkan Driver Support
 #   - Libraries:
-#     - Boost 1.7.1 or above (just headers needed)
+#     - Boost 1.70.1 or above (just headers needed)
 #     - OpenGL Mathematics libglm-dev 0.9 or above
 #     - Vulkan SDK, libvulkan-dev 1.0 or above
 # Build steps:
@@ -15,11 +15,13 @@
 #        cc1b32545db7823b85f5a83a92ed5f85970492c9
 #      For more information of WebRTC build instructions,
 #      see https://webrtc.org/native-code/development/
+#      Use the following command to generate Ninja build file.
+#      ```gn gen out/Default --args='target_os="linux" is_debug=false rtc_include_tests=false is_component_build=false use_rtti=true'```
 #   2. Specify the WebRTC /src directory path to `WEBRTC_ROOT`
 #   3. Make sure that `WEBRTC_LIB_ROOT` matches the toolchain generated directory
 #   4. make -j
 
-WEBRTC_ROOT=/home/user/dev/git/webrtc/src
+WEBRTC_ROOT=/home/user/env/webrtc/src
 WEBRTC_LIB_ROOT=$(WEBRTC_ROOT)/out/Default
 
 TARGET=main
