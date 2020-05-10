@@ -21,7 +21,10 @@
 #   3. Make sure that `WEBRTC_LIB_ROOT` matches the toolchain generated directory
 #   4. make -j
 
-WEBRTC_ROOT=/home/user/env/webrtc/src
+ifndef WEBRTC_ROOT
+$(error WEBRTC_ROOT is not set)
+endif
+
 WEBRTC_LIB_ROOT=$(WEBRTC_ROOT)/out/Default
 
 TARGET=main
