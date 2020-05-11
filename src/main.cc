@@ -7,7 +7,7 @@ int main() {
   rigel::InitializeSSL();
   {
     std::unique_ptr<rigel::SignalingContext> context(
-        new rigel::SignalingContext("localhost", "8080", "/wssrv"));
+        new rigel::SignalingContext("127.0.0.1", "8080", "/wssrv"));
     context->Run();
   }
   rigel::CleanupSSL();
