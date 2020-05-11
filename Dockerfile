@@ -1,3 +1,18 @@
+
+# Requires Docker 19.03.8 or above (via apt recommended)
+# @see https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository
+# Requires NVIDIA Container Toolkit (nvidia-container-toolkit)
+# @see https://github.com/NVIDIA/nvidia-docker
+
+# Host Usage:
+# cd rigel
+# sudo docker build -t image-rigel .
+# sudo docker run --gpus all --network="host" --name rigel -d image-rigel
+# google-chrome http://localhost:8080
+
+# Host Usage: (Interactive for Debug)
+# sudo docker run --gpus all --rm -it --network="host" --entrypoint=/bin/bash image-rigel
+
 FROM nvidia/cudagl:10.1-base-ubuntu18.04
 MAINTAINER Keitaro Oguri "ogukei256@gmail.com"
 
@@ -84,12 +99,12 @@ RUN gn gen out/Default --args='target_os="linux" is_debug=false rtc_include_test
 RUN ninja -C out/Default
 
 # Install Golang
-User root
+USER root
 RUN apt-get install -qy golang-1.10
 ENV PATH $PATH:/usr/lib/go-1.10/bin
 
 # Build Belt
-User user
+USER user
 WORKDIR /home/user
 RUN git clone https://github.com/ogukei/belt belt
 WORKDIR /home/user/belt
@@ -111,11 +126,3 @@ EXPOSE 8080
 
 ENTRYPOINT ["/bin/bash"]
 CMD ["-c", "((../belt/main) &) && (sleep 1 && ./main)"]
-
-# Host Usage:
-# cd rigel
-# sudo docker build -t image-rigel .
-# sudo docker run --gpus all --network="host" --name rigel -d image-rigel
-
-# Host Usage: (Debug)
-# sudo docker run --gpus all --rm -it --network="host" --entrypoint=/bin/bash image-rigel
