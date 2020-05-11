@@ -12,7 +12,7 @@
 #   1. In advance, requires libwebrtc compiled using Chromium build toolchain.
 #      Use the following git commit hash when you checkout branch in order to
 #      ensure that we use the same version of libwebrtc.
-#        cc1b32545db7823b85f5a83a92ed5f85970492c9
+#        159c16f3ceea1d02d08d51fc83d843019d773ec6
 #      For more information of WebRTC build instructions,
 #      see https://webrtc.org/native-code/development/
 #      Use the following command to generate Ninja build file.
