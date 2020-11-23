@@ -31,6 +31,7 @@ TARGET=main
 
 BUILD_DIR=build
 SOURCE_DIR=src
+THIRD_PARTY_DIR=third_party
 
 INCLUDES=-I$(WEBRTC_ROOT) \
 	-I$(WEBRTC_ROOT)/third_party/abseil-cpp \
@@ -57,8 +58,14 @@ LDFLAGS_LINUX=-ldl -lX11
 LDFLAGS_VULKAN=-lvulkan
 LDFLAGS=-lpthread $(LDFLAGS_LINUX) $(LDFLAGS_VULKAN)
 
+# WebRTC
 LIBWEBRTC_A=$(BUILD_DIR)/libwebrtc.a
-LIBS=$(LIBWEBRTC_A)
+# Video Codec SDK
+LIBDIR_VIDEO_CODEC_SDK=$(THIRD_PARTY_DIR)/video_codec_sdk/lib/linux_x86_64
+LIBNVCUVID_SO=$(LIBDIR_VIDEO_CODEC_SDK)/libnvcuvid.so
+LIBNVENC_SO=$(LIBDIR_VIDEO_CODEC_SDK)/libnvidia-encode.so
+# Linkage
+LIBS=$(LIBWEBRTC_A) $(LIBNVCUVID_SO) $(LIBNVENC_SO)
 
 AR=$(WEBRTC_ROOT)/third_party/llvm-build/Release+Asserts/bin/llvm-ar
 
