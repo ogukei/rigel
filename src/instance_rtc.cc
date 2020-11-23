@@ -2,6 +2,7 @@
 #include "instance_rtc.h"
 #include "channel_rtc.h"
 #include "logging.inc"
+#include "render_encoder_factory.h"
 
 #include "api/create_peerconnection_factory.h"
 #include "api/video_codecs/builtin_video_encoder_factory.h"
@@ -38,7 +39,7 @@ RTCInstance::RTCInstance() {
     nullptr,
     webrtc::CreateBuiltinAudioEncoderFactory(),
     webrtc::CreateBuiltinAudioDecoderFactory(),
-    webrtc::CreateBuiltinVideoEncoderFactory(),
+    CreateRigelVideoEncoderFactory(),
     webrtc::CreateBuiltinVideoDecoderFactory(),
     nullptr,
     nullptr);

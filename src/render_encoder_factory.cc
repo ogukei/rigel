@@ -1,7 +1,8 @@
 
 #include "render_encoder_factory.h"
+#include "render_encoder.h"
+
 #include <memory>
-#include "api/video_codecs/builtin_video_encoder_factory.h"
 
 // @see https://webrtc.googlesource.com/src/+/branch-heads/m75/api/video_codecs/builtin_video_encoder_factory.cc
 #include "absl/memory/memory.h"
@@ -87,13 +88,12 @@ VideoEncoderFactory::CodecInfo RigelVideoEncoderFactory::QueryVideoEncoder(
 
 std::unique_ptr<VideoEncoder> RigelVideoEncoderFactory::CreateVideoEncoder(
       const SdpVideoFormat& format) {
-        // TODO:
   RTC_DCHECK(IsFormatSupported(supported_formats_, format));
-  return webrtc::H264Encoder::Create(cricket::VideoCodec(format));
+  return absl::make_unique<RenderH264Encoder>();
 }
 
 //
-std::unique_ptr<webrtc::VideoEncoderFactory> CreateEncoderFactory() {
+std::unique_ptr<webrtc::VideoEncoderFactory> CreateRigelVideoEncoderFactory() {
   return absl::make_unique<RigelVideoEncoderFactory>();
 }
 

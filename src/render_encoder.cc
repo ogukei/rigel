@@ -5,6 +5,8 @@
 
 #include <cuda.h>
 
+using namespace webrtc;
+
 namespace rigel {
 
 class CudaContextImpl {
@@ -37,16 +39,56 @@ CudaContextImpl::~CudaContextImpl() {
 
 //
 
-RenderEncoder::RenderEncoder() : cuda_(new CudaContextImpl()) {
-  encoder_ = new NvEncoderCuda(cuda_->Context(), 1280, 720, NV_ENC_BUFFER_FORMAT_IYUV);
+RenderH264Encoder::RenderH264Encoder() : cuda_(new CudaContextImpl()) {
+  
 }
 
-RenderEncoder::~RenderEncoder() {
-  delete encoder_;
-  encoder_ = nullptr;
+RenderH264Encoder::~RenderH264Encoder() {
   delete cuda_;
   cuda_ = nullptr;
+  Release();
 }
 
+int32_t RenderH264Encoder::InitEncode(const VideoCodec* codec_settings,
+                    int32_t number_of_cores,
+                    size_t max_payload_size) {
+  encoder_ = new NvEncoderCuda(cuda_->Context(), 1280, 720, NV_ENC_BUFFER_FORMAT_IYUV);
+  return 0;
+}
+
+int32_t RenderH264Encoder::Release() {
+  // TODO:      
+  delete encoder_;
+  encoder_ = nullptr;            
+  return 0;
+}
+
+int32_t RenderH264Encoder::RegisterEncodeCompleteCallback(
+    EncodedImageCallback* callback) {
+  // TODO:                  
+  return 0;
+}
+
+void RenderH264Encoder::SetRates(const RateControlParameters& parameters) {
+  // TODO:                  
+  
+}
+// The result of encoding - an EncodedImage and RTPFragmentationHeader - are
+// passed to the encode complete callback.
+int32_t RenderH264Encoder::Encode(const VideoFrame& frame,
+                const std::vector<VideoFrameType>* frame_types) {
+  // TODO:                  
+  return 0;
+}
+
+H264Encoder::EncoderInfo RenderH264Encoder::GetEncoderInfo() const {
+  EncoderInfo info;
+  info.supports_native_handle = true;
+  info.implementation_name = "RIGEL_NVENC_H264";
+  info.scaling_settings = ScalingSettings(ScalingSettings::kOff);
+  info.is_hardware_accelerated = true;
+  info.has_internal_source = false;
+  return info;
+}
 
 }  // namespace rigel

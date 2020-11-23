@@ -9,7 +9,7 @@
 
 namespace rigel {
 
-std::unique_ptr<webrtc::VideoEncoderFactory> CreateVideoEncoderFactory();
+std::unique_ptr<webrtc::VideoEncoderFactory> CreateRigelVideoEncoderFactory();
 
 }  // namespace rigel
 
