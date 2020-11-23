@@ -103,6 +103,13 @@ USER root
 RUN apt-get install -qy golang-1.10
 ENV PATH $PATH:/usr/lib/go-1.10/bin
 
+# libnvidia-encode.so
+USER root
+ENV NVIDIA_DRIVER_CAPABILITIES compute,graphics,video,utility
+# stubs
+COPY ./third_party/video_codec_sdk/lib/linux_x86_64/libnvcuvid.so /usr/lib/x86_64-linux-gnu/libnvcuvid.so
+COPY ./third_party/video_codec_sdk/lib/linux_x86_64/libnvidia-encode.so /usr/lib/x86_64-linux-gnu/libnvidia-encode.so
+
 # Build Belt
 USER user
 WORKDIR /home/user

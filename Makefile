@@ -33,9 +33,11 @@ BUILD_DIR=build
 SOURCE_DIR=src
 THIRD_PARTY_DIR=third_party
 
+INCLUDE_DIR_CUDA=/usr/local/cuda/include
 INCLUDES=-I$(WEBRTC_ROOT) \
 	-I$(WEBRTC_ROOT)/third_party/abseil-cpp \
 	-I$(WEBRTC_ROOT)/third_party/libyuv/include \
+	-I$(INCLUDE_DIR_CUDA) \
 	-I$(SOURCE_DIR)
 
 ISYSTEM_LIBCPP=-isystem$(WEBRTC_ROOT)/buildtools/third_party/libc++/trunk/include
@@ -56,16 +58,18 @@ CXXFLAGS=-Wno-macro-redefined \
 LD=$(CXX)
 LDFLAGS_LINUX=-ldl -lX11
 LDFLAGS_VULKAN=-lvulkan
-LDFLAGS=-lpthread $(LDFLAGS_LINUX) $(LDFLAGS_VULKAN)
+LDFLAGS_CUDA=-lcuda
+# stubs
+LDFLAGS_NVIDIA_ENCODE=-lnvidia-encode
+LDFLAGS_NVCUVID=-lnvcuvid
+# LDFLAGS
+LDFLAGS=-lpthread $(LDFLAGS_LINUX) $(LDFLAGS_VULKAN) \
+	$(LDFLAGS_CUDA) $(LDFLAGS_NVIDIA_ENCODE) $(LDFLAGS_NVCUVID)
 
 # WebRTC
 LIBWEBRTC_A=$(BUILD_DIR)/libwebrtc.a
-# Video Codec SDK
-LIBDIR_VIDEO_CODEC_SDK=$(THIRD_PARTY_DIR)/video_codec_sdk/lib/linux_x86_64
-LIBNVCUVID_SO=$(LIBDIR_VIDEO_CODEC_SDK)/libnvcuvid.so
-LIBNVENC_SO=$(LIBDIR_VIDEO_CODEC_SDK)/libnvidia-encode.so
-# Linkage
-LIBS=$(LIBWEBRTC_A) $(LIBNVCUVID_SO) $(LIBNVENC_SO)
+# LIBS
+LIBS=$(LIBWEBRTC_A)
 
 AR=$(WEBRTC_ROOT)/third_party/llvm-build/Release+Asserts/bin/llvm-ar
 
