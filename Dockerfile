@@ -110,6 +110,9 @@ ENV NVIDIA_DRIVER_CAPABILITIES compute,graphics,video,utility
 COPY ./third_party/video_codec_sdk/lib/linux_x86_64/libnvcuvid.so /usr/lib/x86_64-linux-gnu/libnvcuvid.so
 COPY ./third_party/video_codec_sdk/lib/linux_x86_64/libnvidia-encode.so /usr/lib/x86_64-linux-gnu/libnvidia-encode.so
 
+# Debug
+RUN apt-get install -qy gdb
+
 # Build Belt
 USER user
 WORKDIR /home/user
@@ -126,6 +129,8 @@ WORKDIR /home/user/rigel
 
 ENV WEBRTC_ROOT /home/user/webrtc-checkout/src
 RUN make -j
+
+User root
 
 # Run Setup
 WORKDIR /home/user/rigel

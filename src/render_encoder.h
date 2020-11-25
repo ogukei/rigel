@@ -12,17 +12,18 @@
 #include "modules/video_coding/codecs/h264/include/h264.h"
 #include "modules/video_coding/utility/quality_scaler.h"
 #include "third_party/openh264/src/codec/api/svc/codec_app_def.h"
+#include "video/encoder_bitrate_adjuster.h"
 
 class NvEncoderCuda;
 
 namespace rigel {
 
-class CudaContextImpl;
+class RenderContextCuda;
 
 // @see https://webrtc.googlesource.com/src/+/branch-heads/m75/modules/video_coding/codecs/h264/h264_encoder_impl.h
 class RenderH264Encoder : public webrtc::H264Encoder {
  public:
-  RenderH264Encoder();
+  explicit RenderH264Encoder(RenderContextCuda *cuda);
   ~RenderH264Encoder() override;
   // |max_payload_size| is ignored.
   // The following members of |codec_settings| are used. The rest are ignored.
@@ -43,9 +44,16 @@ class RenderH264Encoder : public webrtc::H264Encoder {
   int32_t Encode(const webrtc::VideoFrame& frame,
                  const std::vector<webrtc::VideoFrameType>* frame_types) override;
   EncoderInfo GetEncoderInfo() const override;
+
  private:
-  CudaContextImpl *cuda_;
+  RenderContextCuda *cuda_;
   NvEncoderCuda *encoder_;
+  webrtc::EncodedImageCallback *encoded_image_callback_;
+  webrtc::EncodedImage encoded_image_;
+  std::vector<std::vector<uint8_t>> packets_;
+  bool should_reconfigure_;
+  webrtc::H264BitstreamParser h264_bitstream_parser_;
+  uint32_t target_bitrate_;
 };
 
 }  // namespace rigel
