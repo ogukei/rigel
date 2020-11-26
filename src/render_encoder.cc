@@ -116,7 +116,6 @@ int32_t RenderH264Encoder::Encode(const VideoFrame& frame,
   if (packets_.size() == 0) return WEBRTC_VIDEO_CODEC_OK;
 
   for (std::vector<uint8_t> &encoded_output_buffer: packets_) {
-    // @see https://github.com/iimachines/webrtc-dotnet-core/blob/master/webrtc-native/NvEncoderH264.cpp
     encoded_image_.set_buffer(encoded_output_buffer.data(), encoded_output_buffer.size());
     encoded_image_.set_size(encoded_output_buffer.size());
     encoded_image_._encodedWidth = frame_buffer->width();
@@ -132,8 +131,8 @@ int32_t RenderH264Encoder::Encode(const VideoFrame& frame,
     encoded_image_.SetSpatialIndex(0);
     
     RTPFragmentationHeader frag_header;
-    // This code is copied from the 3D Streaming Toolkit (MIT license)
-    // https://github.com/3DStreamingToolkit/3DStreamingToolkit
+    // copied from 3DStreamingToolkit
+    // @see https://github.com/3DStreamingToolkit/3DStreamingToolkit
     {
       const auto encoded_buffer_size = encoded_output_buffer.size();
       std::vector<H264::NaluIndex> NALUidx;
