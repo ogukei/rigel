@@ -13,7 +13,7 @@
 # Host Usage: (Interactive for Debug)
 # sudo docker run --gpus all --rm -it --network="host" --entrypoint=/bin/bash image-rigel
 
-FROM nvidia/cudagl:10.1-devel-ubuntu18.04
+FROM nvidia/cudagl:11.1-devel-ubuntu18.04
 MAINTAINER Keitaro Oguri "ogukei256@gmail.com"
 
 # GPU Driver
