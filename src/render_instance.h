@@ -11,10 +11,11 @@
 namespace rigel {
 
 class RenderInstancePrivate;
+class RenderContext;
 
 class RenderInstance : public RenderInstanceInterface {
  public:
-  explicit RenderInstance(RenderInstanceSink *sink);
+  explicit RenderInstance(RenderInstanceSink *sink, RenderContext *context);
   ~RenderInstance();
 
   void StartRendering() override;
@@ -22,6 +23,7 @@ class RenderInstance : public RenderInstanceInterface {
   void InputXYAxis(int x, int y) override;
   void InputZAxis(int z) override;
  private:
+  RenderContext *context_;
   RenderInstanceSink *sink_;
   std::unique_ptr<IntervalTimer> timer_;
   std::unique_ptr<GraphicsRenderer> renderer_;

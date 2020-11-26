@@ -24,12 +24,21 @@ struct RenderInstanceFactoryInterface {
       RenderInstanceSink *sink) = 0;
 };
 
+class RenderContextCuda;
+
 class RenderContext : public RenderInstanceFactoryInterface {
  public:
-  RenderContext() = default;
+  RenderContext();
+  virtual ~RenderContext();
+
   explicit RenderContext(const RenderContext &) = delete;
   std::unique_ptr<RenderInstanceInterface> CreateInstance(
       RenderInstanceSink *sink) override;
+  
+  RenderContextCuda *Cuda() const { return cuda_; }
+
+ private:
+  RenderContextCuda *cuda_;
 };
 
 }  // namespace rigel

@@ -9,7 +9,9 @@
 
 namespace rigel {
 
-std::unique_ptr<webrtc::VideoEncoderFactory> CreateRigelVideoEncoderFactory();
+class RenderContext;
+
+std::unique_ptr<webrtc::VideoEncoderFactory> CreateRigelVideoEncoderFactory(RenderContext *render_context);
 
 }  // namespace rigel
 

@@ -328,4 +328,18 @@ namespace {
       return VK_NULL_HANDLE;
     }
   }
+
+  int GetVkImageMemoryHandleFD(VkInstance instance, VkDevice device, VkDeviceMemory imageMemory) {
+    int fd;
+    VkMemoryGetFdInfoKHR vkMemoryGetFdInfoKHR = {};
+    vkMemoryGetFdInfoKHR.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
+    vkMemoryGetFdInfoKHR.pNext = NULL;
+    vkMemoryGetFdInfoKHR.memory = imageMemory;
+    vkMemoryGetFdInfoKHR.handleType =
+        VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR;
+    PFN_vkGetMemoryFdKHR fpGetMemoryFdKHR = (PFN_vkGetMemoryFdKHR)vkGetInstanceProcAddr(
+        instance, "vkGetMemoryFdKHR");
+    fpGetMemoryFdKHR(device, &vkMemoryGetFdInfoKHR, &fd);
+    return fd;
+  }
 }  // unnamed namespace

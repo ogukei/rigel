@@ -2,6 +2,7 @@
 #include "render_encoder_factory.h"
 #include "render_encoder.h"
 #include "render_context_cuda.h"
+#include "render.h"
 
 #include <memory>
 
@@ -60,7 +61,7 @@ namespace rigel {
 
 class RigelVideoEncoderFactory : public VideoEncoderFactory {
  public:
-  RigelVideoEncoderFactory();
+  RigelVideoEncoderFactory(RenderContext *render_context);
   virtual ~RigelVideoEncoderFactory();
 
   VideoEncoderFactory::CodecInfo QueryVideoEncoder(
@@ -75,16 +76,13 @@ class RigelVideoEncoderFactory : public VideoEncoderFactory {
   RenderContextCuda *cuda_;
 };
 
-RigelVideoEncoderFactory::RigelVideoEncoderFactory() : cuda_(new RenderContextCuda()) {
+RigelVideoEncoderFactory::RigelVideoEncoderFactory(RenderContext *render_context) : cuda_(render_context->Cuda()) {
   // @see https://chromium.googlesource.com/external/webrtc/+/branch-heads/m75/modules/video_coding/codecs/h264/h264.cc
   supported_formats_.push_back(CreateH264Format(H264::kProfileBaseline, H264::kLevel5, "0"));
   supported_formats_.push_back(CreateH264Format(H264::kProfileConstrainedBaseline, H264::kLevel5, "0"));
 }
 
-RigelVideoEncoderFactory::~RigelVideoEncoderFactory() {
-  delete cuda_;
-  cuda_ = nullptr;
-}
+RigelVideoEncoderFactory::~RigelVideoEncoderFactory() {}
 
 VideoEncoderFactory::CodecInfo RigelVideoEncoderFactory::QueryVideoEncoder(
       const SdpVideoFormat& format) const {
@@ -102,8 +100,8 @@ std::unique_ptr<VideoEncoder> RigelVideoEncoderFactory::CreateVideoEncoder(
 }
 
 //
-std::unique_ptr<webrtc::VideoEncoderFactory> CreateRigelVideoEncoderFactory() {
-  return absl::make_unique<RigelVideoEncoderFactory>();
+std::unique_ptr<webrtc::VideoEncoderFactory> CreateRigelVideoEncoderFactory(RenderContext *render_context) {
+  return absl::make_unique<RigelVideoEncoderFactory>(render_context);
 }
 
 }  // namespace rigel

@@ -20,7 +20,7 @@ static webrtc::PeerConnectionInterface::RTCConfiguration MakeConfiguration() {
 
 namespace rigel {
 
-RTCInstance::RTCInstance() {
+RTCInstance::RTCInstance(RenderContext *render_context) {
   RGL_INFO("Creating RTCInstance");
   // Network Thread
   network_thread_ = rtc::Thread::CreateWithSocketServer();
@@ -39,7 +39,7 @@ RTCInstance::RTCInstance() {
     nullptr,
     webrtc::CreateBuiltinAudioEncoderFactory(),
     webrtc::CreateBuiltinAudioDecoderFactory(),
-    CreateRigelVideoEncoderFactory(),
+    CreateRigelVideoEncoderFactory(render_context),
     webrtc::CreateBuiltinVideoDecoderFactory(),
     nullptr,
     nullptr);

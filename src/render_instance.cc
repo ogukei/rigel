@@ -41,8 +41,8 @@ class RenderInstancePrivate {
   bool is_initial_state_;
 };
 
-RenderInstance::RenderInstance(RenderInstanceSink *sink)
-    : sink_(sink), private_(new RenderInstancePrivate()) {}
+RenderInstance::RenderInstance(RenderInstanceSink *sink, RenderContext *context)
+    : sink_(sink), context_(context), private_(new RenderInstancePrivate()) {}
 
 RenderInstance::~RenderInstance() {
   delete private_;
@@ -50,7 +50,7 @@ RenderInstance::~RenderInstance() {
 }
 
 void RenderInstance::StartRendering() {
-  renderer_ = std::unique_ptr<GraphicsRenderer>(new GraphicsRenderer());
+  renderer_ = std::unique_ptr<GraphicsRenderer>(new GraphicsRenderer(context_));
   auto *timer = new IntervalTimer(1.0 / 60, [=](double time_sec) {
     this->OnTick(time_sec);
   });

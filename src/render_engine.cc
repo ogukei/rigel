@@ -17,12 +17,18 @@
 
 #include <vulkan/vulkan.h>
 
+#include "render.h"
 #include "render_engine.h"
+#include "render_context_cuda.h"
 #include "render_helper.inc"
 #include "logging.inc"
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "third_party/tiny_obj_loader.h"
+
+// CUDA interop
+#include <cuda.h>
+#include <cuda_runtime.h>
 
 #define VK_CHECK_RESULT(f) (f)
 
@@ -61,6 +67,10 @@ class GraphicsRendererImpl {
   VkRenderPass renderPass;
 
   uint32_t draw_index_count_;
+
+  // CUDA interop
+  RenderContextCuda *cuda_;
+  cudaExternalMemoryHandleDesc cudaMemDesc;
 
   uint32_t GetMemoryTypeIndex(uint32_t typeBits,
       VkMemoryPropertyFlags properties) {
@@ -121,7 +131,7 @@ class GraphicsRendererImpl {
     vkDestroyFence(device, fence, nullptr);
   }
 
-  GraphicsRendererImpl() {
+  GraphicsRendererImpl(RenderContext *context) : cuda_(context->Cuda()) {
     VkApplicationInfo appInfo = {};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pApplicationName = "Rigel";
@@ -174,11 +184,20 @@ class GraphicsRendererImpl {
         }
       }
     }
+    // extensions
+    const std::vector<const char*> deviceExtensions = {
+      VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME,
+      VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME,
+      VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
+      VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
+    };
     // Create logical device
     VkDeviceCreateInfo deviceCreateInfo = {};
     deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     deviceCreateInfo.queueCreateInfoCount = 1;
     deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
+    deviceCreateInfo.enabledExtensionCount = deviceExtensions.size();
+    deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
     VK_CHECK_RESULT(vkCreateDevice(physicalDevice,
         &deviceCreateInfo, nullptr, &device));
 
@@ -726,12 +745,19 @@ class GraphicsRendererImpl {
 
     vkGetImageSubresourceLayout(device,
         dstImage, &subResource, &subResourceLayout);
+  }
 
-    // Map image memory so we can start copying from it
-    vkMapMemory(device, dstImageMemory, 0,
-        VK_WHOLE_SIZE, 0,
-            const_cast<void **>(reinterpret_cast<const void**>(&imagedata)));
-    imagedata += subResourceLayout.offset;
+  void PrepareCaptureThree() {
+    cudaExternalMemoryHandleDesc desc = {};
+    {
+      desc.type = cudaExternalMemoryHandleTypeOpaqueFd;
+      desc.handle.fd = GetVkImageMemoryHandleFD(instance, device, dstImageMemory);
+      // size
+      VkMemoryRequirements memRequirements;
+      VkMemoryAllocateInfo memAllocInfo = CreateMemoryAllocateInfo();
+      vkGetImageMemoryRequirements(device, dstImage, &memRequirements);
+      desc.size = memRequirements.size;
+    }
   }
 
   void Render(float phi, float theta, float gamma) {
@@ -849,7 +875,7 @@ class GraphicsRendererImpl {
   }
 };
 
-GraphicsRenderer::GraphicsRenderer() : impl_(new GraphicsRendererImpl()) {}
+GraphicsRenderer::GraphicsRenderer(RenderContext *context) : impl_(new GraphicsRendererImpl(context)) {}
 
 GraphicsRenderer::~GraphicsRenderer() {
   delete impl_;
