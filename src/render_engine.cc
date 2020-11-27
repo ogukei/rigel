@@ -20,15 +20,13 @@
 #include "render.h"
 #include "render_engine.h"
 #include "render_context_cuda.h"
+#include "render_engine_cuda.h"
 #include "render_helper.inc"
 #include "logging.inc"
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "third_party/tiny_obj_loader.h"
 
-// CUDA interop
-#include <cuda.h>
-#include <cuda_runtime.h>
 
 #define VK_CHECK_RESULT(f) (f)
 
@@ -70,7 +68,7 @@ class GraphicsRendererImpl {
 
   // CUDA interop
   RenderContextCuda *cuda_;
-  cudaExternalMemoryHandleDesc cudaMemDesc;
+  RenderEngineCuda *cuda_engine_;
 
   uint32_t GetMemoryTypeIndex(uint32_t typeBits,
       VkMemoryPropertyFlags properties) {
@@ -645,6 +643,7 @@ class GraphicsRendererImpl {
     */
     PrepareCapture();
     PrepareCaptureTwo();
+    PrepareCaptureThree();
   }
 
   void PrepareCapture() {
@@ -748,16 +747,13 @@ class GraphicsRendererImpl {
   }
 
   void PrepareCaptureThree() {
-    cudaExternalMemoryHandleDesc desc = {};
-    {
-      desc.type = cudaExternalMemoryHandleTypeOpaqueFd;
-      desc.handle.fd = GetVkImageMemoryHandleFD(instance, device, dstImageMemory);
-      // size
-      VkMemoryRequirements memRequirements;
-      VkMemoryAllocateInfo memAllocInfo = CreateMemoryAllocateInfo();
-      vkGetImageMemoryRequirements(device, dstImage, &memRequirements);
-      desc.size = memRequirements.size;
-    }
+    VkMemoryRequirements memRequirements;
+    VkMemoryAllocateInfo memAllocInfo = CreateMemoryAllocateInfo();
+    vkGetImageMemoryRequirements(device, dstImage, &memRequirements);
+    cuda_engine_ = new RenderEngineCuda(instance, device, dstImageMemory, memRequirements.size);
+
+    std::cout << cuda_engine_->DevicePointer() << std::endl;
+
   }
 
   void Render(float phi, float theta, float gamma) {
@@ -841,12 +837,14 @@ class GraphicsRendererImpl {
 
   void Capture(const RGLGraphicsCaptureHandle &handle) {
     SubmitWork(copyCmd, queue);
-    handle(imagedata, width, height, 0);
+    handle((const char *)(uintptr_t)0, width, height, 0);
   }
 
   ~GraphicsRendererImpl() {
     // Clean up resources
-    vkUnmapMemory(device, dstImageMemory);
+    delete cuda_engine_;
+    cuda_engine_ = nullptr;
+
     vkFreeMemory(device, dstImageMemory, nullptr);
     vkDestroyImage(device, dstImage, nullptr);
 

@@ -3,6 +3,7 @@
 #include "logging.inc"
 #include "render_nv_encoder_cuda.h"
 #include "render_context_cuda.h"
+#include "capture_frame.h"
 
 #include <cuda.h>
 #include "common_video/h264/h264_common.h"
@@ -81,9 +82,8 @@ void RenderH264Encoder::SetRates(const RateControlParameters& parameters) {
 
 int32_t RenderH264Encoder::Encode(const VideoFrame& frame,
                 const std::vector<VideoFrameType>* frame_types) {
-  
+
   auto frame_buffer = frame.video_frame_buffer();
-  auto buffer = static_cast<webrtc::I420Buffer *>(frame_buffer.get());
   auto width = frame_buffer->width();
   auto height = frame_buffer->height();
   // reconfigure
@@ -98,19 +98,7 @@ int32_t RenderH264Encoder::Encode(const VideoFrame& frame,
   }
   // encode
   {
-    const NvEncInputFrame *input_frame = encoder_->GetNextInputFrame();
-    NvEncoderCuda::CopyToDeviceFrame(
-        cuda_->Context(),
-        (void *)buffer->DataY(),
-        0,
-        (CUdeviceptr)input_frame->inputPtr,
-        input_frame->pitch,
-        width,
-        height,
-        CU_MEMORYTYPE_HOST,
-        input_frame->bufferFormat,
-        input_frame->chromaOffsets,
-        input_frame->numChromaPlanes);
+    // TODO: buffer
     encoder_->EncodeFrame(packets_);
   }
   if (packets_.size() == 0) return WEBRTC_VIDEO_CODEC_OK;
