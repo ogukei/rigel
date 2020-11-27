@@ -3,8 +3,16 @@
 #include "render_engine_cuda.h"
 
 #include <cuda_runtime.h>
+#include <stdexcept>
 
 namespace rigel {
+
+template <typename T>
+static void check(T v) {
+  if (v) {
+    throw std::runtime_error("RenderEngineCuda runtime error");
+  }
+}
 
 class RenderEngineCudaPrivate {
  public:
@@ -38,13 +46,14 @@ RenderEngineCuda::RenderEngineCuda(
     handle_desc.handle.fd = GetVkImageMemoryHandleFD(instance, device, memory);
     handle_desc.size = memory_size;
   }
-  cudaImportExternalMemory(&private_->memory, &handle_desc);
+  check(cudaImportExternalMemory(&private_->memory, &handle_desc));
   {
     cudaExternalMemoryBufferDesc buffer_desc = {};
     buffer_desc.offset = 0;
     buffer_desc.size = memory_size;
     buffer_desc.flags = 0;
-    cudaExternalMemoryGetMappedBuffer((void **)&device_ptr_, private_->memory, &buffer_desc);
+    check(cudaExternalMemoryGetMappedBuffer((void **)&device_ptr_, 
+        private_->memory, &buffer_desc));
   }
 }
 

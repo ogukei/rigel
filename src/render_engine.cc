@@ -664,6 +664,16 @@ class GraphicsRendererImpl {
     imgCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     imgCreateInfo.tiling = VK_IMAGE_TILING_LINEAR;
     imgCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    imgCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    // specify external
+    VkExternalMemoryImageCreateInfo vkExternalMemImageCreateInfo = {};
+    vkExternalMemImageCreateInfo.sType =
+        VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
+    vkExternalMemImageCreateInfo.pNext = NULL;
+    vkExternalMemImageCreateInfo.handleTypes =
+        VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR;
+    imgCreateInfo.pNext = &vkExternalMemImageCreateInfo;
+
     // Create the image
     VK_CHECK_RESULT(vkCreateImage(device, &imgCreateInfo, nullptr, &dstImage));
     // Create memory to back up the image
@@ -676,6 +686,15 @@ class GraphicsRendererImpl {
         GetMemoryTypeIndex(memRequirements.memoryTypeBits,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    // specify external
+    VkExportMemoryAllocateInfoKHR vulkanExportMemoryAllocateInfoKHR = {};
+    vulkanExportMemoryAllocateInfoKHR.sType =
+        VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHR;
+    vulkanExportMemoryAllocateInfoKHR.pNext = NULL;
+    vulkanExportMemoryAllocateInfoKHR.handleTypes =
+        VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR;
+    memAllocInfo.pNext = &vulkanExportMemoryAllocateInfoKHR;
+    // alloc
     VK_CHECK_RESULT(vkAllocateMemory(device,
         &memAllocInfo, nullptr, &dstImageMemory));
     VK_CHECK_RESULT(vkBindImageMemory(device, dstImage, dstImageMemory, 0));
