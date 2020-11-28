@@ -5,7 +5,7 @@
 namespace rigel {
 
 NativeVideoFrameBuffer::NativeVideoFrameBuffer(int width, int height)
-    : width_(width), height_(height)
+    : width_(width), height_(height), device_pointer_(nullptr), pitch_(0)
 {
   
 }

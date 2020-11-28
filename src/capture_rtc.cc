@@ -19,14 +19,10 @@ void VideoCapturer::Initialize() {
   constexpr int height = 544;
   // frame buffer
   buffer_ = new rtc::RefCountedObject<NativeVideoFrameBuffer>(width, height);
-  // generate frame
-  auto frame = webrtc::VideoFrame::Builder()
-      .set_video_frame_buffer(buffer_)
-      .build();
-  OnFrame(frame);
 }
 
 void VideoCapturer::OnRenderFrame(const char *map, int w, int h, int r) {
+  buffer_->Configure((void *)map, r);
   // generate frame
   auto frame = webrtc::VideoFrame::Builder()
       .set_video_frame_buffer(buffer_)

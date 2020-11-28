@@ -15,7 +15,9 @@ using namespace webrtc;
 
 namespace rigel {
 
-RenderH264Encoder::RenderH264Encoder(RenderContextCuda *cuda) : cuda_(cuda), encoded_image_callback_(nullptr), should_reconfigure_(false), target_bitrate_(0) {
+RenderH264Encoder::RenderH264Encoder(RenderContextCuda *cuda) : 
+cuda_(cuda), encoded_image_callback_(nullptr), 
+should_reconfigure_(false), target_bitrate_(0), should_initialize_(true) {
   
 }
 
@@ -38,24 +40,7 @@ int32_t RenderH264Encoder::InitEncode(const VideoCodec* codec_settings,
   encoded_image_._encodedHeight = height;
   encoded_image_.set_size(0);
   // @see http://developer.download.nvidia.com/assets/cuda/files/NvEncodeAPI_v.6.0.pdf
-  encoder_ = new NvEncoderCuda(cuda_->Context(), width, height, NV_ENC_BUFFER_FORMAT_IYUV);
-  // Initialize
-  try {
-    NV_ENC_INITIALIZE_PARAMS initialize_params = { NV_ENC_INITIALIZE_PARAMS_VER };
-    NV_ENC_CONFIG encode_config = { NV_ENC_CONFIG_VER };
-    initialize_params.encodeConfig = &encode_config;
-    encoder_->CreateDefaultEncoderParams(&initialize_params, 
-        NV_ENC_CODEC_H264_GUID, NV_ENC_PRESET_P3_GUID, NV_ENC_TUNING_INFO_LOW_LATENCY);
-    {
-      encode_config.rcParams.averageBitRate = 200000;
-      initialize_params.frameRateNum = 60;
-    }
-    encoder_->CreateEncoder(&initialize_params);
-  } catch (const NVENCException &e) {
-    RGL_WARN("NvEncoderCuda initialization error");
-    RGL_WARN(e.what());
-    return WEBRTC_VIDEO_CODEC_ERROR;
-  }
+  encoder_ = new NvEncoderCuda(cuda_->Context(), width, height, NV_ENC_BUFFER_FORMAT_ABGR);
   return WEBRTC_VIDEO_CODEC_OK;
 }
 
@@ -86,23 +71,48 @@ int32_t RenderH264Encoder::Encode(const VideoFrame& frame,
   auto frame_buffer = frame.video_frame_buffer();
   auto width = frame_buffer->width();
   auto height = frame_buffer->height();
+  auto *native_buffer = static_cast<NativeVideoFrameBuffer *>(frame_buffer.get());
+  if (native_buffer->DevicePointer() == nullptr) return WEBRTC_VIDEO_CODEC_OK;
+  // initialize
+  if (should_initialize_) {
+    should_initialize_ = false;
+    try {
+      encoder_->RegisterInputFrame(native_buffer->DevicePointer(), native_buffer->Pitch());
+      NV_ENC_INITIALIZE_PARAMS initialize_params = { NV_ENC_INITIALIZE_PARAMS_VER };
+      NV_ENC_CONFIG encode_config = { NV_ENC_CONFIG_VER };
+      initialize_params.encodeConfig = &encode_config;
+      encoder_->CreateDefaultEncoderParams(&initialize_params, 
+          NV_ENC_CODEC_H264_GUID, NV_ENC_PRESET_P3_GUID, NV_ENC_TUNING_INFO_ULTRA_LOW_LATENCY);
+      {
+        encode_config.rcParams.averageBitRate = 200000;
+        initialize_params.frameRateNum = 60;
+      }
+      encoder_->CreateEncoder(&initialize_params);
+    } catch (const NVENCException &e) {
+      RGL_WARN("NvEncoderCuda initialization error");
+      RGL_WARN(e.what());
+      return WEBRTC_VIDEO_CODEC_ERROR;
+    }
+  }
   // reconfigure
   if (should_reconfigure_) {
-    NV_ENC_RECONFIGURE_PARAMS reconfigure_params = { NV_ENC_RECONFIGURE_PARAMS_VER };
-    NV_ENC_CONFIG encode_config = { NV_ENC_CONFIG_VER };
-    reconfigure_params.reInitEncodeParams.encodeConfig = &encode_config;
-    encoder_->GetInitializeParams(&reconfigure_params.reInitEncodeParams);
-    encode_config.rcParams.averageBitRate = target_bitrate_;
-    encoder_->Reconfigure(&reconfigure_params);
     should_reconfigure_ = false;
+    try {
+      NV_ENC_RECONFIGURE_PARAMS reconfigure_params = { NV_ENC_RECONFIGURE_PARAMS_VER };
+      NV_ENC_CONFIG encode_config = { NV_ENC_CONFIG_VER };
+      reconfigure_params.reInitEncodeParams.encodeConfig = &encode_config;
+      encoder_->GetInitializeParams(&reconfigure_params.reInitEncodeParams);
+      encode_config.rcParams.averageBitRate = target_bitrate_;
+      encoder_->Reconfigure(&reconfigure_params);
+    } catch (const NVENCException &e) {
+      RGL_WARN("NvEncoderCuda reconfigure error");
+      RGL_WARN(e.what());
+      return WEBRTC_VIDEO_CODEC_ERROR;
+    }
   }
   // encode
-  {
-    // TODO: buffer
-    encoder_->EncodeFrame(packets_);
-  }
-  if (packets_.size() == 0) return WEBRTC_VIDEO_CODEC_OK;
-
+  encoder_->EncodeFrame(packets_);
+  // output
   for (std::vector<uint8_t> &encoded_output_buffer: packets_) {
     encoded_image_.set_buffer(encoded_output_buffer.data(), encoded_output_buffer.size());
     encoded_image_.set_size(encoded_output_buffer.size());

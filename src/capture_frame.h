@@ -16,6 +16,14 @@ class NativeVideoFrameBuffer : public webrtc::VideoFrameBuffer {
  public:
   explicit NativeVideoFrameBuffer(int width, int height);
 
+  void *DevicePointer() const { return device_pointer_;}
+  int Pitch() const { return pitch_; }
+
+  void Configure(void *dp, int pitch) {
+    device_pointer_ = dp;
+    pitch_ = pitch;
+  }
+
   // This function specifies in what pixel format the data is stored in.
   virtual webrtc::VideoFrameBuffer::Type type() const override {
     return webrtc::VideoFrameBuffer::Type::kNative;
@@ -35,6 +43,8 @@ class NativeVideoFrameBuffer : public webrtc::VideoFrameBuffer {
  private:
   int width_;
   int height_;
+  void *device_pointer_;
+  int pitch_;
 };
 
 

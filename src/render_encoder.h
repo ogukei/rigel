@@ -52,6 +52,7 @@ class RenderH264Encoder : public webrtc::H264Encoder {
   webrtc::EncodedImage encoded_image_;
   std::vector<std::vector<uint8_t>> packets_;
   bool should_reconfigure_;
+  bool should_initialize_;
   webrtc::H264BitstreamParser h264_bitstream_parser_;
   uint32_t target_bitrate_;
 };

@@ -39,36 +39,25 @@ void NvEncoderCuda::AllocateInputBuffers(int32_t numInputBuffers)
     {
         NVENC_THROW_ERROR("Encoder intialization failed", NV_ENC_ERR_ENCODER_NOT_INITIALIZED);
     }
-
-    // for MEOnly mode we need to allocate seperate set of buffers for reference frame
-    int numCount = m_bMotionEstimationOnly ? 2 : 1;
-
-    for (int count = 0; count < numCount; count++)
+    for (int i = 0; i < numInputBuffers; i++)
     {
-        CUDA_DRVAPI_CALL(cuCtxPushCurrent(m_cuContext));
-        std::vector<void*> inputFrames;
-        for (int i = 0; i < numInputBuffers; i++)
-        {
-            CUdeviceptr pDeviceFrame;
-            uint32_t chromaHeight = GetNumChromaPlanes(GetPixelFormat()) * GetChromaHeight(GetPixelFormat(), GetMaxEncodeHeight());
-            if (GetPixelFormat() == NV_ENC_BUFFER_FORMAT_YV12 || GetPixelFormat() == NV_ENC_BUFFER_FORMAT_IYUV)
-                chromaHeight = GetChromaHeight(GetPixelFormat(), GetMaxEncodeHeight());
-            CUDA_DRVAPI_CALL(cuMemAllocPitch((CUdeviceptr *)&pDeviceFrame,
-                &m_cudaPitch,
-                GetWidthInBytes(GetPixelFormat(), GetMaxEncodeWidth()),
-                GetMaxEncodeHeight() + chromaHeight, 16));
-            inputFrames.push_back((void*)pDeviceFrame);
-        }
-        CUDA_DRVAPI_CALL(cuCtxPopCurrent(NULL));
-
-        RegisterInputResources(inputFrames,
+        RegisterInputResources(frames_,
             NV_ENC_INPUT_RESOURCE_TYPE_CUDADEVICEPTR,
             GetMaxEncodeWidth(),
             GetMaxEncodeHeight(),
-            (int)m_cudaPitch,
+            pitch_,
             GetPixelFormat(),
-            (count == 1) ? true : false);
+            false);
     }
+}
+
+void NvEncoderCuda::RegisterInputFrame(void *device_pointer, int pitch) {
+    CUdeviceptr frame = (CUdeviceptr)(uintptr_t)device_pointer;
+    std::vector<void *> v = {
+        (void *)frame,
+    };
+    frames_ = v;
+    pitch_ = pitch;
 }
 
 void NvEncoderCuda::SetIOCudaStreams(NV_ENC_CUSTREAM_PTR inputStream, NV_ENC_CUSTREAM_PTR outputStream)

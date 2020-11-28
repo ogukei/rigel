@@ -83,6 +83,7 @@ public:
     */
     void SetIOCudaStreams(NV_ENC_CUSTREAM_PTR inputStream, NV_ENC_CUSTREAM_PTR outputStream);
 
+    void RegisterInputFrame(void *device_pointer, int pitch);
 protected:
     /**
     *  @brief This function is used to release the input buffers allocated for encoding.
@@ -108,4 +109,6 @@ protected:
 
 private:
     size_t m_cudaPitch = 0;
+    std::vector<void *> frames_;
+    int pitch_ = 0;
 };

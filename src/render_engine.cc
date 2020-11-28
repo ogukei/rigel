@@ -69,6 +69,7 @@ class GraphicsRendererImpl {
   // CUDA interop
   RenderContextCuda *cuda_;
   RenderEngineCuda *cuda_engine_;
+  VkSubresourceLayout dstImageSubResourceLayout;
 
   uint32_t GetMemoryTypeIndex(uint32_t typeBits,
       VkMemoryPropertyFlags properties) {
@@ -759,10 +760,9 @@ class GraphicsRendererImpl {
     // Get layout of the image (including row pitch)
     VkImageSubresource subResource{};
     subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    VkSubresourceLayout subResourceLayout;
 
     vkGetImageSubresourceLayout(device,
-        dstImage, &subResource, &subResourceLayout);
+        dstImage, &subResource, &dstImageSubResourceLayout);
   }
 
   void PrepareCaptureThree() {
@@ -770,9 +770,6 @@ class GraphicsRendererImpl {
     VkMemoryAllocateInfo memAllocInfo = CreateMemoryAllocateInfo();
     vkGetImageMemoryRequirements(device, dstImage, &memRequirements);
     cuda_engine_ = new RenderEngineCuda(instance, device, dstImageMemory, memRequirements.size);
-
-    std::cout << cuda_engine_->DevicePointer() << std::endl;
-
   }
 
   void Render(float phi, float theta, float gamma) {
@@ -856,7 +853,7 @@ class GraphicsRendererImpl {
 
   void Capture(const RGLGraphicsCaptureHandle &handle) {
     SubmitWork(copyCmd, queue);
-    handle((const char *)(uintptr_t)0, width, height, 0);
+    handle((const char *)(uintptr_t)cuda_engine_->DevicePointer(), width, height, (int)dstImageSubResourceLayout.rowPitch);
   }
 
   ~GraphicsRendererImpl() {
