@@ -111,7 +111,7 @@ COPY ./third_party/video_codec_sdk/lib/linux_x86_64/libnvcuvid.so /usr/lib/x86_6
 COPY ./third_party/video_codec_sdk/lib/linux_x86_64/libnvidia-encode.so /usr/lib/x86_64-linux-gnu/libnvidia-encode.so
 
 # Debug
-RUN apt-get install -qy gdb
+RUN apt-get install -qy gdb valgrind
 
 # Build Belt
 USER user

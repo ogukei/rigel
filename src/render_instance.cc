@@ -51,7 +51,7 @@ RenderInstance::~RenderInstance() {
 
 void RenderInstance::StartRendering() {
   renderer_ = std::unique_ptr<GraphicsRenderer>(new GraphicsRenderer(context_));
-  auto *timer = new IntervalTimer(1.0 / 60, [=](double time_sec) {
+  auto *timer = new IntervalTimer(1.0 / 120, [=](double time_sec) {
     this->OnTick(time_sec);
   });
   timer_ = std::unique_ptr<IntervalTimer>(timer);

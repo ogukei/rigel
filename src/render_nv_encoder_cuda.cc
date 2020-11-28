@@ -39,6 +39,16 @@ void NvEncoderCuda::AllocateInputBuffers(int32_t numInputBuffers)
     {
         NVENC_THROW_ERROR("Encoder intialization failed", NV_ENC_ERR_ENCODER_NOT_INITIALIZED);
     }
+}
+
+void NvEncoderCuda::RegisterInputFrame(void *device_pointer, int pitch) {
+    CUdeviceptr frame = (CUdeviceptr)(uintptr_t)device_pointer;
+    std::vector<void *> v = {
+        (void *)frame,
+    };
+    frames_ = v;
+    pitch_ = pitch;
+    int numInputBuffers = GetEncoderBufferCount();
     for (int i = 0; i < numInputBuffers; i++)
     {
         RegisterInputResources(frames_,
@@ -49,15 +59,6 @@ void NvEncoderCuda::AllocateInputBuffers(int32_t numInputBuffers)
             GetPixelFormat(),
             false);
     }
-}
-
-void NvEncoderCuda::RegisterInputFrame(void *device_pointer, int pitch) {
-    CUdeviceptr frame = (CUdeviceptr)(uintptr_t)device_pointer;
-    std::vector<void *> v = {
-        (void *)frame,
-    };
-    frames_ = v;
-    pitch_ = pitch;
 }
 
 void NvEncoderCuda::SetIOCudaStreams(NV_ENC_CUSTREAM_PTR inputStream, NV_ENC_CUSTREAM_PTR outputStream)
