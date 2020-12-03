@@ -3,6 +3,7 @@
 #include "render_encoder.h"
 #include "render_context_cuda.h"
 #include "render.h"
+#include "logging.inc"
 
 #include <memory>
 
@@ -29,6 +30,8 @@
 
 using namespace webrtc;
 
+namespace rigel {
+
 // builtin_video_encoder_factory.cc
 // @see https://webrtc.googlesource.com/src/+/branch-heads/m75/api/video_codecs/builtin_video_encoder_factory.cc
 static bool IsFormatSupported(const std::vector<SdpVideoFormat>& supported_formats,
@@ -43,21 +46,6 @@ static bool IsFormatSupported(const std::vector<SdpVideoFormat>& supported_forma
   return false;
 }
 
-// @see https://chromium.googlesource.com/external/webrtc/+/branch-heads/m75/modules/video_coding/codecs/h264/h264.cc
-static SdpVideoFormat CreateH264Format(H264::Profile profile,
-                                H264::Level level,
-                                const std::string& packetization_mode) {
-  const absl::optional<std::string> profile_string =
-      H264::ProfileLevelIdToString(H264::ProfileLevelId(profile, level));
-  RTC_CHECK(profile_string);
-  return SdpVideoFormat(
-      cricket::kH264CodecName,
-      {{cricket::kH264FmtpProfileLevelId, *profile_string},
-       {cricket::kH264FmtpLevelAsymmetryAllowed, "1"},
-       {cricket::kH264FmtpPacketizationMode, packetization_mode}});
-}
-
-namespace rigel {
 
 class RigelVideoEncoderFactory : public VideoEncoderFactory {
  public:
@@ -77,6 +65,7 @@ class RigelVideoEncoderFactory : public VideoEncoderFactory {
 };
 
 RigelVideoEncoderFactory::RigelVideoEncoderFactory(RenderContext *render_context) : cuda_(render_context->Cuda()) {
+  // @see https://chromium.googlesource.com/external/webrtc/+/69202b2a57b8b7f7046dc26930aafd6f779a152e/media/engine/fake_webrtc_video_engine.cc
   // @see https://chromium.googlesource.com/external/webrtc/+/branch-heads/m75/modules/video_coding/codecs/h264/h264.cc
   supported_formats_.push_back(CreateH264Format(H264::kProfileBaseline, H264::kLevel5, "0"));
   supported_formats_.push_back(CreateH264Format(H264::kProfileConstrainedBaseline, H264::kLevel5, "0"));
@@ -86,16 +75,13 @@ RigelVideoEncoderFactory::~RigelVideoEncoderFactory() {}
 
 VideoEncoderFactory::CodecInfo RigelVideoEncoderFactory::QueryVideoEncoder(
       const SdpVideoFormat& format) const {
-  RTC_DCHECK(IsFormatSupported(supported_formats_, format));
   CodecInfo info;
   info.has_internal_source = false;
-  info.is_hardware_accelerated = false;
   return info;
 }
 
 std::unique_ptr<VideoEncoder> RigelVideoEncoderFactory::CreateVideoEncoder(
       const SdpVideoFormat& format) {
-  RTC_DCHECK(IsFormatSupported(supported_formats_, format));
   return absl::make_unique<RenderH264Encoder>(cuda_);
 }
 

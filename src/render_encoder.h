@@ -48,6 +48,7 @@ class RenderH264Encoder : public webrtc::H264Encoder {
  private:
   RenderContextCuda *cuda_;
   NvEncoderCuda *encoder_;
+  // @see https://webrtc.googlesource.com/src/+/69202b2a57b8b7f7046dc26930aafd6f779a152e/api/video_codecs/video_encoder.h
   webrtc::EncodedImageCallback *encoded_image_callback_;
   webrtc::EncodedImage encoded_image_;
   std::vector<std::vector<uint8_t>> packets_;

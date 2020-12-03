@@ -4,6 +4,7 @@
 #include "render_nv_encoder_cuda.h"
 #include "render_context_cuda.h"
 #include "capture_frame.h"
+#include "render_encode_buffer.h"
 
 #include <cuda.h>
 #include "common_video/h264/h264_common.h"
@@ -124,8 +125,9 @@ int32_t RenderH264Encoder::Encode(const VideoFrame& frame,
   encoder_->EncodeFrame(packets_);
   // output
   for (std::vector<uint8_t> &encoded_output_buffer: packets_) {
-    encoded_image_.set_buffer(encoded_output_buffer.data(), encoded_output_buffer.size());
-    encoded_image_.set_size(encoded_output_buffer.size());
+    // @see https://webrtc.googlesource.com/src/+/69202b2a57b8b7f7046dc26930aafd6f779a152e/api/video/encoded_image.h
+    auto data = NonCopyEncodedImageBuffer::Create(encoded_output_buffer.data(), encoded_output_buffer.size());
+    encoded_image_.SetEncodedData(data);
     encoded_image_._encodedWidth = frame_buffer->width();
     encoded_image_._encodedHeight = frame_buffer->height();
     encoded_image_.SetTimestamp(frame.timestamp());
@@ -137,37 +139,6 @@ int32_t RenderH264Encoder::Encode(const VideoFrame& frame,
     encoded_image_.timing_.flags = VideoSendTiming::kInvalid;
     encoded_image_.SetColorSpace(frame.color_space());
     encoded_image_.SetSpatialIndex(0);
-    
-    RTPFragmentationHeader frag_header;
-    // copied from 3DStreamingToolkit
-    // @see https://github.com/3DStreamingToolkit/3DStreamingToolkit
-    {
-      const auto encoded_buffer_size = encoded_output_buffer.size();
-      std::vector<H264::NaluIndex> NALUidx;
-      uint8_t *p_nal = (uint8_t *)encoded_output_buffer.data();
-      NALUidx = H264::FindNaluIndices(p_nal, encoded_buffer_size);
-      size_t i_nal = NALUidx.size();
-      if (i_nal == 0) {
-        return WEBRTC_VIDEO_CODEC_ERROR;
-      }
-      if (i_nal == 1) {
-          NALUidx[0].payload_size = encoded_buffer_size - NALUidx[0].payload_start_offset;
-      } else {
-        for (size_t i = 0; i < i_nal; i++) {
-          NALUidx[i].payload_size = i + 1 >= i_nal ? encoded_buffer_size - NALUidx[i].payload_start_offset : NALUidx[i + 1].start_offset - NALUidx[i].payload_start_offset;
-        }
-      }
-      frag_header.VerifyAndAllocateFragmentationHeader(i_nal);
-      uint32_t totalNaluIndex = 0;
-      for (size_t nal_index = 0; nal_index < i_nal; nal_index++) {
-        const size_t currentNaluSize = NALUidx[nal_index].payload_size; //i_frame_size
-        frag_header.fragmentationOffset[totalNaluIndex] = NALUidx[nal_index].payload_start_offset;
-        frag_header.fragmentationLength[totalNaluIndex] = currentNaluSize;
-        frag_header.fragmentationPlType[totalNaluIndex] = H264::ParseNaluType(p_nal[NALUidx[nal_index].payload_start_offset]);
-        frag_header.fragmentationTimeDiff[totalNaluIndex] = 0;
-        totalNaluIndex++;
-      }
-    }
     // obtain QP from bitstream
     h264_bitstream_parser_.ParseBitstream(encoded_image_.data(), encoded_image_.size());
     h264_bitstream_parser_.GetLastSliceQp(&encoded_image_.qp_);
@@ -175,7 +146,8 @@ int32_t RenderH264Encoder::Encode(const VideoFrame& frame,
     CodecSpecificInfo codec_specific;
     codec_specific.codecType = kVideoCodecH264;
     codec_specific.codecSpecific.H264.packetization_mode = H264PacketizationMode::NonInterleaved;
-    encoded_image_callback_->OnEncodedImage(encoded_image_, &codec_specific, &frag_header);
+    // @see https://webrtc.googlesource.com/src/+/69202b2a57b8b7f7046dc26930aafd6f779a152e/api/video_codecs/video_encoder.h
+    encoded_image_callback_->OnEncodedImage(encoded_image_, &codec_specific);
   }
 
   return WEBRTC_VIDEO_CODEC_OK;

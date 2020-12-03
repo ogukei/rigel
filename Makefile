@@ -50,7 +50,7 @@ CXXFLAGS=-Wno-macro-redefined \
 	-DWEBRTC_POSIX \
 	-D_LIBCPP_ABI_UNSTABLE \
 	-fno-lto \
-	-std=c++11 \
+	-std=c++14 \
 	-nostdinc++ \
 	$(ISYSTEM_LIBCPP) \
 	$(INCLUDES)

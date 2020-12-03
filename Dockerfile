@@ -90,12 +90,12 @@ USER root
 RUN apt-get update && apt-get install -qy lsb-release sudo
 RUN /home/user/webrtc-checkout/src/build/install-build-deps.sh --no-prompt --no-chromeos-fonts
 
-# Build libwebrtc (M75)
+# Build libwebrtc (M87)
 # http://webrtc.github.io/webrtc-org/native-code/development/
 USER user
 WORKDIR /home/user/webrtc-checkout/src
-RUN gclient sync -r branch-heads/m75
-RUN gn gen out/Default --args='target_os="linux" is_debug=false rtc_include_tests=false is_component_build=false use_rtti=true rtc_use_dummy_audio_file_devices=true'
+RUN gclient sync -r 69202b2a57b8b7f7046dc26930aafd6f779a152e
+RUN gn gen out/Default --args='target_os="linux" is_debug=false rtc_include_tests=false is_component_build=false use_rtti=true rtc_use_dummy_audio_file_devices=true rtc_use_h264=true'
 RUN ninja -C out/Default
 
 # Install Golang
