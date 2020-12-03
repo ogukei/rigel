@@ -67,8 +67,10 @@ class RigelVideoEncoderFactory : public VideoEncoderFactory {
 RigelVideoEncoderFactory::RigelVideoEncoderFactory(RenderContext *render_context) : cuda_(render_context->Cuda()) {
   // @see https://chromium.googlesource.com/external/webrtc/+/69202b2a57b8b7f7046dc26930aafd6f779a152e/media/engine/fake_webrtc_video_engine.cc
   // @see https://chromium.googlesource.com/external/webrtc/+/branch-heads/m75/modules/video_coding/codecs/h264/h264.cc
-  supported_formats_.push_back(CreateH264Format(H264::kProfileBaseline, H264::kLevel5, "0"));
-  supported_formats_.push_back(CreateH264Format(H264::kProfileConstrainedBaseline, H264::kLevel5, "0"));
+  supported_formats_.push_back(CreateH264Format(H264::kProfileBaseline, H264::kLevel3_1, "1"));
+  supported_formats_.push_back(CreateH264Format(H264::kProfileBaseline, H264::kLevel3_1, "0"));
+  supported_formats_.push_back(CreateH264Format(H264::kProfileConstrainedBaseline, H264::kLevel3_1, "1"));
+  supported_formats_.push_back(CreateH264Format(H264::kProfileConstrainedBaseline, H264::kLevel3_1, "0"));
 }
 
 RigelVideoEncoderFactory::~RigelVideoEncoderFactory() {}
