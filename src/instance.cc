@@ -12,7 +12,7 @@ SignalingInstance::SignalingInstance(
       render_context_(new RenderContext()) {}
 
 void SignalingInstance::Initialize() {
-  rtc_ = new RTCInstance();
+  rtc_ = new RTCInstance(render_context_.get());
 }
 
 SignalingInstance::~SignalingInstance() {

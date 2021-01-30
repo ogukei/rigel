@@ -17,12 +17,16 @@
 
 #include <vulkan/vulkan.h>
 
+#include "render.h"
 #include "render_engine.h"
+#include "render_context_cuda.h"
+#include "render_engine_cuda.h"
 #include "render_helper.inc"
 #include "logging.inc"
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "third_party/tiny_obj_loader.h"
+
 
 #define VK_CHECK_RESULT(f) (f)
 
@@ -61,6 +65,11 @@ class GraphicsRendererImpl {
   VkRenderPass renderPass;
 
   uint32_t draw_index_count_;
+
+  // CUDA interop
+  RenderContextCuda *cuda_;
+  RenderEngineCuda *cuda_engine_;
+  VkSubresourceLayout dstImageSubResourceLayout;
 
   uint32_t GetMemoryTypeIndex(uint32_t typeBits,
       VkMemoryPropertyFlags properties) {
@@ -121,7 +130,7 @@ class GraphicsRendererImpl {
     vkDestroyFence(device, fence, nullptr);
   }
 
-  GraphicsRendererImpl() {
+  GraphicsRendererImpl(RenderContext *context) : cuda_(context->Cuda()) {
     VkApplicationInfo appInfo = {};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pApplicationName = "Rigel";
@@ -174,11 +183,20 @@ class GraphicsRendererImpl {
         }
       }
     }
+    // extensions
+    const std::vector<const char*> deviceExtensions = {
+      VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME,
+      VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME,
+      VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
+      VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
+    };
     // Create logical device
     VkDeviceCreateInfo deviceCreateInfo = {};
     deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     deviceCreateInfo.queueCreateInfoCount = 1;
     deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
+    deviceCreateInfo.enabledExtensionCount = deviceExtensions.size();
+    deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
     VK_CHECK_RESULT(vkCreateDevice(physicalDevice,
         &deviceCreateInfo, nullptr, &device));
 
@@ -626,6 +644,7 @@ class GraphicsRendererImpl {
     */
     PrepareCapture();
     PrepareCaptureTwo();
+    PrepareCaptureThree();
   }
 
   void PrepareCapture() {
@@ -646,6 +665,16 @@ class GraphicsRendererImpl {
     imgCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     imgCreateInfo.tiling = VK_IMAGE_TILING_LINEAR;
     imgCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    imgCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    // specify external
+    VkExternalMemoryImageCreateInfo vkExternalMemImageCreateInfo = {};
+    vkExternalMemImageCreateInfo.sType =
+        VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
+    vkExternalMemImageCreateInfo.pNext = NULL;
+    vkExternalMemImageCreateInfo.handleTypes =
+        VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR;
+    imgCreateInfo.pNext = &vkExternalMemImageCreateInfo;
+
     // Create the image
     VK_CHECK_RESULT(vkCreateImage(device, &imgCreateInfo, nullptr, &dstImage));
     // Create memory to back up the image
@@ -658,6 +687,15 @@ class GraphicsRendererImpl {
         GetMemoryTypeIndex(memRequirements.memoryTypeBits,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    // specify external
+    VkExportMemoryAllocateInfoKHR vulkanExportMemoryAllocateInfoKHR = {};
+    vulkanExportMemoryAllocateInfoKHR.sType =
+        VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHR;
+    vulkanExportMemoryAllocateInfoKHR.pNext = NULL;
+    vulkanExportMemoryAllocateInfoKHR.handleTypes =
+        VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR;
+    memAllocInfo.pNext = &vulkanExportMemoryAllocateInfoKHR;
+    // alloc
     VK_CHECK_RESULT(vkAllocateMemory(device,
         &memAllocInfo, nullptr, &dstImageMemory));
     VK_CHECK_RESULT(vkBindImageMemory(device, dstImage, dstImageMemory, 0));
@@ -722,16 +760,16 @@ class GraphicsRendererImpl {
     // Get layout of the image (including row pitch)
     VkImageSubresource subResource{};
     subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    VkSubresourceLayout subResourceLayout;
 
     vkGetImageSubresourceLayout(device,
-        dstImage, &subResource, &subResourceLayout);
+        dstImage, &subResource, &dstImageSubResourceLayout);
+  }
 
-    // Map image memory so we can start copying from it
-    vkMapMemory(device, dstImageMemory, 0,
-        VK_WHOLE_SIZE, 0,
-            const_cast<void **>(reinterpret_cast<const void**>(&imagedata)));
-    imagedata += subResourceLayout.offset;
+  void PrepareCaptureThree() {
+    VkMemoryRequirements memRequirements;
+    VkMemoryAllocateInfo memAllocInfo = CreateMemoryAllocateInfo();
+    vkGetImageMemoryRequirements(device, dstImage, &memRequirements);
+    cuda_engine_ = new RenderEngineCuda(instance, device, dstImageMemory, memRequirements.size);
   }
 
   void Render(float phi, float theta, float gamma) {
@@ -815,12 +853,14 @@ class GraphicsRendererImpl {
 
   void Capture(const RGLGraphicsCaptureHandle &handle) {
     SubmitWork(copyCmd, queue);
-    handle(imagedata, width, height, 0);
+    handle((const char *)(uintptr_t)cuda_engine_->DevicePointer(), width, height, (int)dstImageSubResourceLayout.rowPitch);
   }
 
   ~GraphicsRendererImpl() {
     // Clean up resources
-    vkUnmapMemory(device, dstImageMemory);
+    delete cuda_engine_;
+    cuda_engine_ = nullptr;
+
     vkFreeMemory(device, dstImageMemory, nullptr);
     vkDestroyImage(device, dstImage, nullptr);
 
@@ -849,7 +889,7 @@ class GraphicsRendererImpl {
   }
 };
 
-GraphicsRenderer::GraphicsRenderer() : impl_(new GraphicsRendererImpl()) {}
+GraphicsRenderer::GraphicsRenderer(RenderContext *context) : impl_(new GraphicsRendererImpl(context)) {}
 
 GraphicsRenderer::~GraphicsRenderer() {
   delete impl_;

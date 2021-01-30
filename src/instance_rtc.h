@@ -15,9 +15,11 @@ namespace rigel {
 struct SignalingMessageInterface;
 struct RenderInstanceFactoryInterface;
 
+class RenderContext;
+
 class RTCInstance {
  public:
-  RTCInstance();
+  explicit RTCInstance(RenderContext *render_context);
   ~RTCInstance();
 
   std::unique_ptr<PeerChannelInterface> CreateChannel(

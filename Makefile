@@ -31,10 +31,13 @@ TARGET=main
 
 BUILD_DIR=build
 SOURCE_DIR=src
+THIRD_PARTY_DIR=third_party
 
+INCLUDE_DIR_CUDA=/usr/local/cuda/include
 INCLUDES=-I$(WEBRTC_ROOT) \
 	-I$(WEBRTC_ROOT)/third_party/abseil-cpp \
 	-I$(WEBRTC_ROOT)/third_party/libyuv/include \
+	-I$(INCLUDE_DIR_CUDA) \
 	-I$(SOURCE_DIR)
 
 ISYSTEM_LIBCPP=-isystem$(WEBRTC_ROOT)/buildtools/third_party/libc++/trunk/include
@@ -47,7 +50,7 @@ CXXFLAGS=-Wno-macro-redefined \
 	-DWEBRTC_POSIX \
 	-D_LIBCPP_ABI_UNSTABLE \
 	-fno-lto \
-	-std=c++11 \
+	-std=c++14 \
 	-nostdinc++ \
 	$(ISYSTEM_LIBCPP) \
 	$(INCLUDES)
@@ -55,9 +58,21 @@ CXXFLAGS=-Wno-macro-redefined \
 LD=$(CXX)
 LDFLAGS_LINUX=-ldl -lX11
 LDFLAGS_VULKAN=-lvulkan
-LDFLAGS=-lpthread $(LDFLAGS_LINUX) $(LDFLAGS_VULKAN)
+LDFLAGS_CUDA=-lcuda
+LDFLAGS_CUDART=-lcudart 
+# stubs
+LDFLAGS_NVIDIA_ENCODE=-lnvidia-encode
+LDFLAGS_NVCUVID=-lnvcuvid
+# cuda
+LDFLAGS_CUDA_DIR=-L/usr/local/cuda/lib64
+# LDFLAGS
+LDFLAGS=-lpthread $(LDFLAGS_LINUX) $(LDFLAGS_VULKAN) \
+	$(LDFLAGS_CUDA) $(LDFLAGS_CUDART) $(LDFLAGS_NVIDIA_ENCODE) $(LDFLAGS_NVCUVID) \
+	$(LDFLAGS_CUDA_DIR)
 
+# WebRTC
 LIBWEBRTC_A=$(BUILD_DIR)/libwebrtc.a
+# LIBS
 LIBS=$(LIBWEBRTC_A)
 
 AR=$(WEBRTC_ROOT)/third_party/llvm-build/Release+Asserts/bin/llvm-ar

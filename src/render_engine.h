@@ -7,6 +7,7 @@
 namespace rigel {
 
 class GraphicsRendererImpl;
+class RenderContext;
 
 typedef std::function<void(const char *, int, int, int)>
     RGLGraphicsCaptureHandle;
@@ -15,7 +16,7 @@ class GraphicsRenderer {
  private:
   GraphicsRendererImpl *impl_;
  public:
-  GraphicsRenderer();
+  explicit GraphicsRenderer(RenderContext *context);
   ~GraphicsRenderer();
   void Render(float x, float y, float z);
   void Capture(const RGLGraphicsCaptureHandle &f);

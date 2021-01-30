@@ -13,7 +13,7 @@
 # Host Usage: (Interactive for Debug)
 # sudo docker run --gpus all --rm -it --network="host" --entrypoint=/bin/bash image-rigel
 
-FROM nvidia/cudagl:10.1-base-ubuntu18.04
+FROM nvidia/cudagl:11.1-devel-ubuntu18.04
 MAINTAINER Keitaro Oguri "ogukei256@gmail.com"
 
 # GPU Driver
@@ -90,18 +90,28 @@ USER root
 RUN apt-get update && apt-get install -qy lsb-release sudo
 RUN /home/user/webrtc-checkout/src/build/install-build-deps.sh --no-prompt --no-chromeos-fonts
 
-# Build libwebrtc (M75)
+# Build libwebrtc (M87)
 # http://webrtc.github.io/webrtc-org/native-code/development/
 USER user
 WORKDIR /home/user/webrtc-checkout/src
-RUN gclient sync -r branch-heads/m75
-RUN gn gen out/Default --args='target_os="linux" is_debug=false rtc_include_tests=false is_component_build=false use_rtti=true rtc_use_dummy_audio_file_devices=true'
+RUN gclient sync -r 69202b2a57b8b7f7046dc26930aafd6f779a152e
+RUN gn gen out/Default --args='target_os="linux" is_debug=false rtc_include_tests=false is_component_build=false use_rtti=true rtc_use_dummy_audio_file_devices=true rtc_use_h264=true'
 RUN ninja -C out/Default
 
 # Install Golang
 USER root
 RUN apt-get install -qy golang-1.10
 ENV PATH $PATH:/usr/lib/go-1.10/bin
+
+# libnvidia-encode.so
+USER root
+ENV NVIDIA_DRIVER_CAPABILITIES compute,graphics,video,utility
+# stubs
+COPY ./third_party/video_codec_sdk/lib/linux_x86_64/libnvcuvid.so /usr/lib/x86_64-linux-gnu/libnvcuvid.so
+COPY ./third_party/video_codec_sdk/lib/linux_x86_64/libnvidia-encode.so /usr/lib/x86_64-linux-gnu/libnvidia-encode.so
+
+# Debug
+RUN apt-get install -qy gdb valgrind
 
 # Build Belt
 USER user
@@ -119,6 +129,8 @@ WORKDIR /home/user/rigel
 
 ENV WEBRTC_ROOT /home/user/webrtc-checkout/src
 RUN make -j
+
+User root
 
 # Run Setup
 WORKDIR /home/user/rigel

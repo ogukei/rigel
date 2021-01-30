@@ -7,6 +7,7 @@
 #include "media/base/video_broadcaster.h"
 #include "api/video/i420_buffer.h"
 #include "render.h"
+#include "capture_frame.h"
 
 namespace rigel {
 
@@ -23,7 +24,7 @@ class VideoCapturer : public rtc::VideoBroadcaster,
   void OnRenderFrame(const char *v, int w, int h, int r) override;
 
  private:
-  rtc::scoped_refptr<webrtc::I420Buffer> buffer_;
+  rtc::scoped_refptr<NativeVideoFrameBuffer> buffer_;
 };
 
 }  // namespace rigel
